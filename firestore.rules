@@ -1,0 +1,558 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
+      return isVerified() && request.auth.token.email == 'kennethmhaiki@gmail.com';
+    }
+    function isNonEmptyStr(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+    function isOptStr(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+    function isNonNegNum(val) {
+      return (val is int || val is float) && val >= 0;
+    }
+    function isPosNum(val) {
+      return (val is int || val is float) && val > 0;
+    }
+
+    // Validation Blueprints
+    function isValidCompanySettings(data) {
+      return data.keys().hasAll([
+          'ownerId', 'companyName', 'contractOrgName', 'district', 'phone',
+          'lenderName', 'lenderWitnessName', 'defaultPenaltyPercent', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'companyName', 'contractOrgName', 'district', 'region', 'phone', 'email',
+          'lenderName', 'lenderWitnessName', 'defaultPenaltyPercent', 'paymentChannelsNote', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isNonEmptyStr(data.companyName, 2, 120)
+        && isNonEmptyStr(data.contractOrgName, 2, 120)
+        && isNonEmptyStr(data.district, 2, 80)
+        && isOptStr(data, 'region', 80)
+        && isNonEmptyStr(data.phone, 5, 30)
+        && isOptStr(data, 'email', 120)
+        && isNonEmptyStr(data.lenderName, 2, 120)
+        && isNonEmptyStr(data.lenderWitnessName, 2, 120)
+        && isNonNegNum(data.defaultPenaltyPercent) && data.defaultPenaltyPercent <= 100
+        && isOptStr(data, 'paymentChannelsNote', 300)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLoanType(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'defaultInterestType', 'defaultInterestValue',
+          'defaultFrequency', 'defaultDuration', 'defaultPenaltyPercent', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'description', 'defaultInterestType', 'defaultInterestValue',
+          'defaultFrequency', 'defaultDuration', 'defaultPenaltyPercent', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isNonEmptyStr(data.name, 2, 100)
+        && isOptStr(data, 'description', 300)
+        && data.defaultInterestType in ['flat', 'reducing', 'fixed_amount']
+        && isNonNegNum(data.defaultInterestValue)
+        && data.defaultFrequency in ['weekly', 'monthly']
+        && isPosNum(data.defaultDuration) && data.defaultDuration <= 600
+        && isNonNegNum(data.defaultPenaltyPercent) && data.defaultPenaltyPercent <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll([
+          'ownerId', 'fullName', 'phone', 'street', 'district',
+          'witnessName', 'witnessPhone', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'fullName', 'phone', 'email', 'idNumber', 'street', 'district', 'occupation',
+          'witnessName', 'witnessPhone', 'witnessStreet', 'witnessDistrict', 'collateral',
+          'bankName', 'bankAccountNumber', 'isGovernmentEmployee', 'checkNumber', 'bankMandateActive',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isNonEmptyStr(data.fullName, 2, 120)
+        && isNonEmptyStr(data.phone, 5, 30)
+        && isOptStr(data, 'email', 120)
+        && isOptStr(data, 'idNumber', 60)
+        && isNonEmptyStr(data.street, 2, 100)
+        && isNonEmptyStr(data.district, 2, 80)
+        && isOptStr(data, 'occupation', 100)
+        && isNonEmptyStr(data.witnessName, 2, 120)
+        && isNonEmptyStr(data.witnessPhone, 5, 30)
+        && isOptStr(data, 'witnessStreet', 100)
+        && isOptStr(data, 'witnessDistrict', 80)
+        && isOptStr(data, 'collateral', 200)
+        && (!('bankName' in data) || data.bankName in ['', 'NMB', 'CRDB', 'EXIM', 'MWALIMU'])
+        && isOptStr(data, 'bankAccountNumber', 40)
+        && (!('isGovernmentEmployee' in data) || data.isGovernmentEmployee is bool)
+        && isOptStr(data, 'checkNumber', 40)
+        && (!('bankMandateActive' in data) || data.bankMandateActive is bool)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLoan(data) {
+      return data.keys().hasAll([
+          'ownerId', 'customerId', 'loanTypeName', 'principal', 'interestType',
+          'interestValue', 'totalInterest', 'penaltyPercent', 'penaltyApplied',
+          'frequency', 'durationCount', 'startDate', 'endDate', 'totalDue',
+          'totalPaidPrincipal', 'totalPaidInterest', 'totalPaidPenalty', 'status',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'customerId', 'loanTypeName', 'principal', 'interestType',
+          'interestValue', 'totalInterest', 'penaltyPercent', 'penaltyApplied',
+          'frequency', 'durationCount', 'startDate', 'endDate', 'totalDue',
+          'totalPaidPrincipal', 'totalPaidInterest', 'totalPaidPenalty', 'status',
+          'collateral', 'notes', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isValidId(data.customerId)
+        && isNonEmptyStr(data.loanTypeName, 2, 100)
+        && isPosNum(data.principal)
+        && data.interestType in ['flat', 'reducing', 'fixed_amount']
+        && isNonNegNum(data.interestValue)
+        && isNonNegNum(data.totalInterest)
+        && isNonNegNum(data.penaltyPercent) && data.penaltyPercent <= 100
+        && isNonNegNum(data.penaltyApplied)
+        && data.frequency in ['weekly', 'monthly']
+        && isPosNum(data.durationCount) && data.durationCount <= 600
+        && isNonEmptyStr(data.startDate, 8, 30)
+        && isNonEmptyStr(data.endDate, 8, 30)
+        && isPosNum(data.totalDue)
+        && isNonNegNum(data.totalPaidPrincipal)
+        && isNonNegNum(data.totalPaidInterest)
+        && isNonNegNum(data.totalPaidPenalty)
+        && data.status in ['active', 'completed', 'overdue']
+        && isOptStr(data, 'collateral', 200)
+        && isOptStr(data, 'notes', 400)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidRepayment(data) {
+      return data.keys().hasAll([
+          'ownerId', 'loanId', 'customerId', 'receiptNumber', 'amount',
+          'principalPortion', 'interestPortion', 'penaltyPortion',
+          'paymentMethod', 'paymentDate', 'balanceAfter', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'loanId', 'customerId', 'receiptNumber', 'amount',
+          'principalPortion', 'interestPortion', 'penaltyPortion',
+          'paymentMethod', 'channelDetail', 'paymentDate', 'balanceAfter', 'notes', 'createdAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isValidId(data.loanId)
+        && isValidId(data.customerId)
+        && isNonEmptyStr(data.receiptNumber, 3, 60)
+        && isPosNum(data.amount)
+        && isNonNegNum(data.principalPortion)
+        && isNonNegNum(data.interestPortion)
+        && isNonNegNum(data.penaltyPortion)
+        && data.paymentMethod in ['cash', 'bank', 'mobile_money']
+        && isOptStr(data, 'channelDetail', 100)
+        && isNonEmptyStr(data.paymentDate, 8, 30)
+        && isNonNegNum(data.balanceAfter)
+        && isOptStr(data, 'notes', 300)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMessageLog(data) {
+      return data.keys().hasAll([
+          'ownerId', 'customerId', 'channel', 'recipientPhone', 'messageBody',
+          'amountPaidSnapshot', 'amountOwedSnapshot', 'sentDate', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'customerId', 'channel', 'recipientPhone', 'messageBody',
+          'amountPaidSnapshot', 'amountOwedSnapshot', 'sentDate', 'createdAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isValidId(data.customerId)
+        && data.channel in ['whatsapp', 'sms', 'social', 'email', 'push']
+        && isNonEmptyStr(data.recipientPhone, 5, 30)
+        && isNonEmptyStr(data.messageBody, 2, 1000)
+        && isNonNegNum(data.amountPaidSnapshot)
+        && isNonNegNum(data.amountOwedSnapshot)
+        && isNonEmptyStr(data.sentDate, 8, 30)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidLoanApplication(data) {
+      return data.keys().hasAll([
+          'ownerId', 'fullName', 'phone', 'street', 'district', 'witnessName', 'witnessPhone',
+          'loanTypeName', 'requestedAmount', 'interestType', 'interestValue', 'frequency',
+          'durationCount', 'status', 'submittedDate', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'fullName', 'phone', 'email', 'idNumber', 'street', 'district', 'occupation',
+          'witnessName', 'witnessPhone', 'collateral',
+          'bankName', 'bankAccountNumber', 'isGovernmentEmployee', 'checkNumber',
+          'loanTypeName', 'requestedAmount',
+          'interestType', 'interestValue', 'frequency', 'durationCount', 'purpose',
+          'status', 'reviewNote', 'approvedLoanId', 'submittedDate', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && isNonEmptyStr(data.fullName, 2, 120)
+        && isNonEmptyStr(data.phone, 5, 30)
+        && isOptStr(data, 'email', 120)
+        && isOptStr(data, 'idNumber', 60)
+        && isNonEmptyStr(data.street, 2, 100)
+        && isNonEmptyStr(data.district, 2, 80)
+        && isOptStr(data, 'occupation', 100)
+        && isNonEmptyStr(data.witnessName, 2, 120)
+        && isNonEmptyStr(data.witnessPhone, 5, 30)
+        && isOptStr(data, 'collateral', 200)
+        && (!('bankName' in data) || data.bankName in ['', 'NMB', 'CRDB', 'EXIM', 'MWALIMU'])
+        && isOptStr(data, 'bankAccountNumber', 40)
+        && (!('isGovernmentEmployee' in data) || data.isGovernmentEmployee is bool)
+        && isOptStr(data, 'checkNumber', 40)
+        && isNonEmptyStr(data.loanTypeName, 2, 100)
+        && isPosNum(data.requestedAmount)
+        && data.interestType in ['flat', 'reducing', 'fixed_amount']
+        && isNonNegNum(data.interestValue)
+        && data.frequency in ['weekly', 'monthly']
+        && isPosNum(data.durationCount) && data.durationCount <= 600
+        && isOptStr(data, 'purpose', 400)
+        && data.status in ['pending', 'approved', 'rejected']
+        && isOptStr(data, 'reviewNote', 300)
+        && isOptStr(data, 'approvedLoanId', 128)
+        && isNonEmptyStr(data.submittedDate, 8, 30)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBankDebitTransaction(data) {
+      return data.keys().hasAll([
+          'ownerId', 'customerId', 'loanId', 'deductionType', 'bankCode',
+          'accountOrCheckNumber', 'amount', 'gatewayReference', 'gatewayMode',
+          'status', 'statusMessage', 'processedDate', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'customerId', 'loanId', 'repaymentId', 'deductionType', 'bankCode',
+          'accountOrCheckNumber', 'amount', 'gatewayReference', 'gatewayMode',
+          'status', 'statusMessage', 'processedDate', 'createdAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isValidId(data.customerId)
+        && isValidId(data.loanId)
+        && isOptStr(data, 'repaymentId', 128)
+        && data.deductionType in ['bank_direct_debit', 'gov_check_number']
+        && data.bankCode in ['NMB', 'CRDB', 'EXIM', 'MWALIMU', 'GOV_PAYROLL']
+        && isNonEmptyStr(data.accountOrCheckNumber, 3, 40)
+        && isPosNum(data.amount)
+        && isNonEmptyStr(data.gatewayReference, 3, 80)
+        && data.gatewayMode in ['live_api', 'sandbox_api']
+        && data.status in ['completed', 'pending', 'failed']
+        && isNonEmptyStr(data.statusMessage, 2, 300)
+        && isNonEmptyStr(data.processedDate, 8, 30)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidStaffAccount(data) {
+      return data.keys().hasAll([
+          'ownerId', 'fullName', 'roleTitle', 'username', 'usernameLower',
+          'passwordHash', 'accountStatus', 'permissions', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'fullName', 'phone', 'roleTitle', 'username', 'usernameLower',
+          'passwordHash', 'accountStatus', 'lockReason', 'permissions', 'lastLoginAt',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isNonEmptyStr(data.fullName, 2, 120)
+        && isOptStr(data, 'phone', 30)
+        && isNonEmptyStr(data.roleTitle, 2, 80)
+        && isNonEmptyStr(data.username, 3, 60)
+        && data.username.matches('^[a-zA-Z0-9_.\\-]+$')
+        && isNonEmptyStr(data.usernameLower, 3, 60)
+        && data.usernameLower.matches('^[a-z0-9_.\\-]+$')
+        && isNonEmptyStr(data.passwordHash, 20, 300)
+        && data.accountStatus in ['active', 'locked']
+        && isOptStr(data, 'lockReason', 200)
+        && data.permissions is list
+        && data.permissions.size() <= 20
+        && (data.permissions.size() == 0 || data.permissions[0] is string)
+        && data.permissions.hasOnly([
+          'view_dashboard', 'manage_applications', 'manage_customers', 'edit_delete_customers',
+          'view_loans_penalties', 'apply_penalties', 'view_schedule', 'collect_repayments',
+          'view_revenue_reports', 'manage_bank_debit', 'send_messages', 'use_calculator',
+          'view_contracts', 'manage_loan_types', 'manage_company_settings'
+        ])
+        && isOptStr(data, 'lastLoginAt', 40)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDailyTask(data) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'dueDate', 'priority', 'category',
+          'createdByUsername', 'createdByName', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'notes', 'dueDate', 'dueTime', 'priority', 'category',
+          'customerId', 'customerName', 'assignedToUsername', 'assignedToName',
+          'createdByUsername', 'createdByName', 'completed', 'completedAt',
+          'completedByName', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && isNonEmptyStr(data.title, 2, 160)
+        && isOptStr(data, 'notes', 400)
+        && isNonEmptyStr(data.dueDate, 8, 30)
+        && isOptStr(data, 'dueTime', 10)
+        && data.priority in ['low', 'medium', 'high']
+        && data.category in ['customer_call', 'report', 'collection', 'general']
+        && (!('customerId' in data) || data.customerId == '' || isValidId(data.customerId))
+        && isOptStr(data, 'customerName', 120)
+        && isOptStr(data, 'assignedToUsername', 60)
+        && isOptStr(data, 'assignedToName', 120)
+        && isNonEmptyStr(data.createdByUsername, 2, 60)
+        && isNonEmptyStr(data.createdByName, 2, 120)
+        && data.completed is bool
+        && isOptStr(data, 'completedAt', 40)
+        && isOptStr(data, 'completedByName', 120)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Collection Match Blocks
+    match /companySettings/{settingId} {
+      allow get: if isValidId(settingId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(settingId) && isVerified() && isValidCompanySettings(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(settingId) && isVerified() && isValidCompanySettings(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'companyName', 'contractOrgName', 'district', 'region', 'phone', 'email',
+            'lenderName', 'lenderWitnessName', 'defaultPenaltyPercent', 'paymentChannelsNote', 'updatedAt'
+          ])
+        );
+      allow delete: if isValidId(settingId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /loanTypes/{typeId} {
+      allow get: if isValidId(typeId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(typeId) && isVerified() && isValidLoanType(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(typeId) && isVerified() && isValidLoanType(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'description', 'defaultInterestType', 'defaultInterestValue',
+            'defaultFrequency', 'defaultDuration', 'defaultPenaltyPercent', 'updatedAt'
+          ])
+        );
+      allow delete: if isValidId(typeId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /customers/{customerId} {
+      allow get: if isValidId(customerId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(customerId) && isVerified() && isValidCustomer(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(customerId) && isVerified() && isValidCustomer(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName', 'phone', 'email', 'idNumber', 'street', 'district', 'occupation',
+            'witnessName', 'witnessPhone', 'witnessStreet', 'witnessDistrict', 'collateral',
+            'bankName', 'bankAccountNumber', 'isGovernmentEmployee', 'checkNumber', 'bankMandateActive',
+            'updatedAt'
+          ])
+        );
+      allow delete: if isValidId(customerId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /loans/{loanId} {
+      allow get: if isValidId(loanId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(loanId) && isVerified() && isValidLoan(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/customers/$(incoming().customerId))
+        && get(/databases/$(database)/documents/customers/$(incoming().customerId)).data.ownerId == request.auth.uid;
+      allow update: if isValidId(loanId) && isVerified() && isValidLoan(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().customerId == existing().customerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().status != 'completed' && (
+              // Action: Record Repayment
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'totalPaidPrincipal', 'totalPaidInterest', 'totalPaidPenalty', 'status', 'updatedAt'
+              ]) ||
+              // Action: Apply Penalty / Mark Overdue
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'penaltyApplied', 'totalDue', 'status', 'notes', 'updatedAt'
+              ]) ||
+              // Action: Edit Loan Terms
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'loanTypeName', 'principal', 'interestType', 'interestValue', 'totalInterest',
+                'penaltyPercent', 'frequency', 'durationCount', 'startDate', 'endDate',
+                'totalDue', 'collateral', 'notes', 'status', 'updatedAt'
+              ])
+            )
+          )
+        );
+      allow delete: if isValidId(loanId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /repayments/{repaymentId} {
+      allow get: if isValidId(repaymentId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(repaymentId) && isVerified() && isValidRepayment(incoming())
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/loans/$(incoming().loanId))
+        && get(/databases/$(database)/documents/loans/$(incoming().loanId)).data.ownerId == request.auth.uid
+        && exists(/databases/$(database)/documents/customers/$(incoming().customerId));
+      allow update: if false;
+      allow delete: if isValidId(repaymentId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /messageLogs/{logId} {
+      allow get: if isValidId(logId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(logId) && isVerified() && isValidMessageLog(incoming())
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/customers/$(incoming().customerId))
+        && get(/databases/$(database)/documents/customers/$(incoming().customerId)).data.ownerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isValidId(logId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /loanApplications/{applicationId} {
+      allow get: if isValidId(applicationId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      // Public dropbox create: strictly validated schema, forced pending status, server timestamps, zero read/list access
+      allow create: if isValidId(applicationId)
+        && isValidLoanApplication(incoming())
+        && incoming().ownerId == 'public_portal'
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(applicationId) && isVerified() && isValidLoanApplication(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && existing().status == 'pending'
+        && incoming().status in ['approved', 'rejected']
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'reviewNote', 'approvedLoanId', 'updatedAt'
+        ]);
+      allow delete: if isValidId(applicationId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /bankDebitTransactions/{txId} {
+      allow get: if isValidId(txId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(txId) && isVerified() && isValidBankDebitTransaction(incoming())
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/loans/$(incoming().loanId))
+        && get(/databases/$(database)/documents/loans/$(incoming().loanId)).data.ownerId == request.auth.uid
+        && exists(/databases/$(database)/documents/customers/$(incoming().customerId));
+      allow update: if false;
+      allow delete: if isValidId(txId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /staffAccounts/{staffId} {
+      allow get: if isValidId(staffId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(staffId) && isVerified() && isValidStaffAccount(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(staffId) && isVerified() && isValidStaffAccount(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName', 'phone', 'roleTitle', 'username', 'usernameLower',
+            'passwordHash', 'accountStatus', 'lockReason', 'permissions',
+            'lastLoginAt', 'updatedAt'
+          ])
+        );
+      allow delete: if isValidId(staffId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /tasks/{taskId} {
+      allow get: if isValidId(taskId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(taskId) && isVerified() && isValidDailyTask(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(taskId) && isVerified() && isValidDailyTask(incoming())
+        && (existing().ownerId == request.auth.uid || isAdmin())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'notes', 'dueDate', 'dueTime', 'priority', 'category',
+            'customerId', 'customerName', 'assignedToUsername', 'assignedToName',
+            'completed', 'completedAt', 'completedByName', 'updatedAt'
+          ])
+        );
+      allow delete: if isValidId(taskId) && isVerified() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+  }
+}

@@ -1,0 +1,959 @@
+{
+  "entities": {
+    "CompanySettings": {
+      "title": "CompanySettings",
+      "description": "Configuration and profile details for the microfinance company.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the owning account."
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Main company display name."
+        },
+        "contractOrgName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Organization header used in official contracts."
+        },
+        "district": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "District name for the company and contract header."
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Region or street address."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 30,
+          "description": "Official company phone number."
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Official company email address."
+        },
+        "lenderName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Lender full name printed on contracts."
+        },
+        "lenderWitnessName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Lender witness full name printed on contracts."
+        },
+        "defaultPenaltyPercent": {
+          "type": "number",
+          "description": "Default late payment penalty percentage."
+        },
+        "paymentChannelsNote": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Payment account numbers and mobile money instructions."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "companyName",
+        "contractOrgName",
+        "district",
+        "phone",
+        "lenderName",
+        "lenderWitnessName",
+        "defaultPenaltyPercent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LoanType": {
+      "title": "LoanType",
+      "description": "Configurable microfinance loan product definition.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "defaultInterestType": {
+          "type": "string",
+          "enum": ["flat", "reducing", "fixed_amount"]
+        },
+        "defaultInterestValue": {
+          "type": "number"
+        },
+        "defaultFrequency": {
+          "type": "string",
+          "enum": ["weekly", "monthly"]
+        },
+        "defaultDuration": {
+          "type": "number"
+        },
+        "defaultPenaltyPercent": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "defaultInterestType",
+        "defaultInterestValue",
+        "defaultFrequency",
+        "defaultDuration",
+        "defaultPenaltyPercent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Borrower profile including guarantor and collateral information.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "idNumber": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "street": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "district": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "occupation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "witnessName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "witnessPhone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "witnessStreet": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "witnessDistrict": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "collateral": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "bankName": {
+          "type": "string",
+          "enum": ["", "NMB", "CRDB", "EXIM", "MWALIMU"]
+        },
+        "bankAccountNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "isGovernmentEmployee": {
+          "type": "boolean"
+        },
+        "checkNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "bankMandateActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "fullName",
+        "phone",
+        "street",
+        "district",
+        "witnessName",
+        "witnessPhone",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Microfinance loan issued to a customer with interest, schedule frequency, penalty, and balance tracking.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "loanTypeName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "principal": {
+          "type": "number"
+        },
+        "interestType": {
+          "type": "string",
+          "enum": ["flat", "reducing", "fixed_amount"]
+        },
+        "interestValue": {
+          "type": "number"
+        },
+        "totalInterest": {
+          "type": "number"
+        },
+        "penaltyPercent": {
+          "type": "number"
+        },
+        "penaltyApplied": {
+          "type": "number"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["weekly", "monthly"]
+        },
+        "durationCount": {
+          "type": "number"
+        },
+        "startDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "endDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "totalDue": {
+          "type": "number"
+        },
+        "totalPaidPrincipal": {
+          "type": "number"
+        },
+        "totalPaidInterest": {
+          "type": "number"
+        },
+        "totalPaidPenalty": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "completed", "overdue"]
+        },
+        "collateral": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerId",
+        "loanTypeName",
+        "principal",
+        "interestType",
+        "interestValue",
+        "totalInterest",
+        "penaltyPercent",
+        "penaltyApplied",
+        "frequency",
+        "durationCount",
+        "startDate",
+        "endDate",
+        "totalDue",
+        "totalPaidPrincipal",
+        "totalPaidInterest",
+        "totalPaidPenalty",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Repayment": {
+      "title": "Repayment",
+      "description": "Recorded loan repayment split into principal, interest, and penalty with receipt and payment channel.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "loanId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "receiptNumber": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "amount": {
+          "type": "number"
+        },
+        "principalPortion": {
+          "type": "number"
+        },
+        "interestPortion": {
+          "type": "number"
+        },
+        "penaltyPortion": {
+          "type": "number"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["cash", "bank", "mobile_money"]
+        },
+        "channelDetail": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "paymentDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "balanceAfter": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "loanId",
+        "customerId",
+        "receiptNumber",
+        "amount",
+        "principalPortion",
+        "interestPortion",
+        "penaltyPortion",
+        "paymentMethod",
+        "paymentDate",
+        "balanceAfter",
+        "createdAt"
+      ]
+    },
+    "MessageLog": {
+      "title": "MessageLog",
+      "description": "Log of reminder messages prepared or dispatched via WhatsApp or SMS.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["whatsapp", "sms", "social", "email", "push"]
+        },
+        "recipientPhone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "messageBody": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 1000
+        },
+        "amountPaidSnapshot": {
+          "type": "number"
+        },
+        "amountOwedSnapshot": {
+          "type": "number"
+        },
+        "sentDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerId",
+        "channel",
+        "recipientPhone",
+        "messageBody",
+        "amountPaidSnapshot",
+        "amountOwedSnapshot",
+        "sentDate",
+        "createdAt"
+      ]
+    },
+    "LoanApplication": {
+      "title": "LoanApplication",
+      "description": "Online loan application submitted by a prospective or returning borrower awaiting staff approval.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "idNumber": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "street": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "district": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "occupation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "witnessName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "witnessPhone": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "collateral": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "bankName": {
+          "type": "string",
+          "enum": ["", "NMB", "CRDB", "EXIM", "MWALIMU"]
+        },
+        "bankAccountNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "isGovernmentEmployee": {
+          "type": "boolean"
+        },
+        "checkNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "loanTypeName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "requestedAmount": {
+          "type": "number"
+        },
+        "interestType": {
+          "type": "string",
+          "enum": ["flat", "reducing", "fixed_amount"]
+        },
+        "interestValue": {
+          "type": "number"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["weekly", "monthly"]
+        },
+        "durationCount": {
+          "type": "number"
+        },
+        "purpose": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "reviewNote": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "approvedLoanId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "submittedDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "fullName",
+        "phone",
+        "street",
+        "district",
+        "witnessName",
+        "witnessPhone",
+        "loanTypeName",
+        "requestedAmount",
+        "interestType",
+        "interestValue",
+        "frequency",
+        "durationCount",
+        "status",
+        "submittedDate",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BankDebitTransaction": {
+      "title": "BankDebitTransaction",
+      "description": "Audit log of automatic direct debit or government payroll check-number deduction transactions.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "loanId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "repaymentId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "deductionType": {
+          "type": "string",
+          "enum": ["bank_direct_debit", "gov_check_number"]
+        },
+        "bankCode": {
+          "type": "string",
+          "enum": ["NMB", "CRDB", "EXIM", "MWALIMU", "GOV_PAYROLL"]
+        },
+        "accountOrCheckNumber": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "amount": {
+          "type": "number"
+        },
+        "gatewayReference": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "gatewayMode": {
+          "type": "string",
+          "enum": ["live_api", "sandbox_api"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "pending", "failed"]
+        },
+        "statusMessage": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "processedDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerId",
+        "loanId",
+        "deductionType",
+        "bankCode",
+        "accountOrCheckNumber",
+        "amount",
+        "gatewayReference",
+        "gatewayMode",
+        "status",
+        "statusMessage",
+        "processedDate",
+        "createdAt"
+      ]
+    },
+    "StaffAccount": {
+      "title": "StaffAccount",
+      "description": "Staff user profile with scrypt password hash, account lock state, and activated permission levels.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "roleTitle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60,
+          "pattern": "^[a-zA-Z0-9_.\\-]+$"
+        },
+        "usernameLower": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60,
+          "pattern": "^[a-z0-9_.\\-]+$"
+        },
+        "passwordHash": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 300
+        },
+        "accountStatus": {
+          "type": "string",
+          "enum": ["active", "locked"]
+        },
+        "lockReason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "permissions": {
+          "type": "array",
+          "description": "Activated permission levels granted to the staff member."
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "fullName",
+        "roleTitle",
+        "username",
+        "usernameLower",
+        "passwordHash",
+        "accountStatus",
+        "permissions",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyTask": {
+      "title": "DailyTask",
+      "description": "Daily task reminder created by admins or staff (e.g., customer follow-up calls, report preparation) with completion tracking.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "dueDate": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "dueTime": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "category": {
+          "type": "string",
+          "enum": ["customer_call", "report", "collection", "general"]
+        },
+        "customerId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "customerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "assignedToUsername": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "assignedToName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdByUsername": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "createdByName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "completed": {
+          "type": "boolean"
+        },
+        "completedAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "completedByName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "title",
+        "dueDate",
+        "priority",
+        "category",
+        "createdByUsername",
+        "createdByName",
+        "completed",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/companySettings/{settingId}": {
+      "schema": { "$ref": "#/entities/CompanySettings" },
+      "description": "Microfinance company configuration documents."
+    },
+    "/loanTypes/{typeId}": {
+      "schema": { "$ref": "#/entities/LoanType" },
+      "description": "Loan product definitions offered by the microfinance."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Registered microfinance borrowers and their guarantors."
+    },
+    "/loans/{loanId}": {
+      "schema": { "$ref": "#/entities/Loan" },
+      "description": "Issued microfinance loans linked to customers."
+    },
+    "/repayments/{repaymentId}": {
+      "schema": { "$ref": "#/entities/Repayment" },
+      "description": "Collected loan repayments and receipt records."
+    },
+    "/messageLogs/{logId}": {
+      "schema": { "$ref": "#/entities/MessageLog" },
+      "description": "Customer communication log for WhatsApp, SMS, and social reminders."
+    },
+    "/loanApplications/{applicationId}": {
+      "schema": { "$ref": "#/entities/LoanApplication" },
+      "description": "Online loan applications submitted by borrowers awaiting staff approval."
+    },
+    "/bankDebitTransactions/{txId}": {
+      "schema": { "$ref": "#/entities/BankDebitTransaction" },
+      "description": "Direct bank debit and government payroll check-number deduction audit records."
+    },
+    "/staffAccounts/{staffId}": {
+      "schema": { "$ref": "#/entities/StaffAccount" },
+      "description": "Staff accounts with hashed credentials, lock/unlock controls, and activated permission levels."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/DailyTask" },
+      "description": "Daily operational task reminders created and completed by admins and staff."
+    }
+  }
+}
